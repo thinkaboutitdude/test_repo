@@ -1,0 +1,8 @@
+gymnasium
+wandb
+tensorboard
+numpy
+pyrallis
+tqdm
+matplotlib
+pandas
