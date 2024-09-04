@@ -29,7 +29,7 @@ class TrainConfig:
     eval_seed: int = 0
     num_arms: int = 10
     num_train_steps: int = 10000
-    seq_len: int = 200
+    seq_len: int = 150
     num_episodes = 20
     episode_steps = 100
     eval_every: int = 1000

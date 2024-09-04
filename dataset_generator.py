@@ -20,8 +20,8 @@ class UCBConfig:
     num_eval_envs: int = 200
     ucb_alpha: float = 2.0
     num_arms: int = 10
-    train_steps: int = 200
-    context_len: int = 200
+    train_steps: int = 150
+    context_len: int = 150
     train_seed: int = 1
     eval_seed: int = 0
 
