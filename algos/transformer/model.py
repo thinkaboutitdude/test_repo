@@ -148,6 +148,7 @@ class Model(nn.Module):
         self.transformer = nn.ModuleDict(
             dict(
                 proj=nn.Linear(n_token, config.n_embd),
+                state_emb = nn.Embedding(1, n_token),
                 reward_emb=nn.Embedding(2, n_token),
                 action_emb=nn.Embedding(num_actions, n_token),
                 h=nn.ModuleList(Block(config) for _ in range(config.n_layer)),
@@ -155,12 +156,15 @@ class Model(nn.Module):
                 head=nn.Linear(config.n_embd, num_actions, bias=False),
             )
         )
-        self.pad_tensor_acts = nn.parameter.Parameter(
-            data=torch.randn(1, 1, n_token), requires_grad=True
-        )
-        self.pad_tensor_rews = nn.parameter.Parameter(
-            data=torch.randn(1, 1, n_token), requires_grad=True
-        )
+        # self.pad_tensor_states = nn.parameter.Parameter(
+        #     data=torch.randn(1, 1, n_token), requires_grad=True
+        # )
+        # self.pad_tensor_acts = nn.parameter.Parameter(
+        #     data=torch.randn(1, 1, n_token), requires_grad=True
+        # )
+        # self.pad_tensor_rews = nn.parameter.Parameter(
+        #     data=torch.randn(1, 1, n_token), requires_grad=True
+        # )
         self.n_embd = config.n_embd
         self.n_token = n_token
         self.context = []
@@ -188,6 +192,7 @@ class Model(nn.Module):
     
     def forward(
         self,
+        states: torch.Tensor,
         actions: torch.Tensor,
         rewards: torch.Tensor,
     ) -> torch.Tensor:
@@ -195,18 +200,21 @@ class Model(nn.Module):
         T = rewards.shape[1] * 2 + 2
         device = rewards.device
 
+        state_emb = self.transformer.state_emb(states)
         rew_emb = self.transformer.reward_emb(rewards)
         act_emb = self.transformer.action_emb(actions)
         # Add padding to indicate the beginning of the sequence
-        pad_acts_batch = torch.tile(self.pad_tensor_acts, dims=(b, 1, 1))
-        pad_rews_batch = torch.tile(self.pad_tensor_rews, dims=(b, 1, 1))
-        act_emb = torch.cat([pad_acts_batch, act_emb], dim=1)
-        rew_emb = torch.cat([pad_rews_batch, rew_emb], dim=1)
+        # pad_states_batch = torch.tile(self.pad_tensor_states, dims=(b, 1, 1))
+        # pad_acts_batch = torch.tile(self.pad_tensor_acts, dims=(b, 1, 1))
+        # pad_rews_batch = torch.tile(self.pad_tensor_rews, dims=(b, 1, 1))
+        # state_emb = torch.cat([pad_states_batch, state_emb], dim=1)
+        # act_emb = torch.cat([pad_acts_batch, act_emb], dim=1)
+        # rew_emb = torch.cat([pad_rews_batch, rew_emb], dim=1)
 
         sequence = (
-            torch.stack([act_emb, rew_emb], dim=1)
+            torch.stack([state_emb, act_emb, rew_emb], dim=1)
             .permute(0, 2, 1, 3)
-            .reshape(b, 2 * (t + 1), self.n_token)
+            .reshape(b, 3 * t, self.n_token)
         )
 
         x = self.transformer.proj(sequence)
@@ -216,4 +224,4 @@ class Model(nn.Module):
 
         logits = self.transformer.head(self.transformer.ln_f(x))
 
-        return logits[:, 1::2]
+        return logits[:, ::3]

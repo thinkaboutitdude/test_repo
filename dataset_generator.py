@@ -16,12 +16,12 @@ class UCBConfig:
     Config for dataset generation
     """
     env_name: str = 'MultiArmedBanditBernoulli'
-    num_train_envs: int = 30
-    num_eval_envs: int = 20
+    num_train_envs: int = 5000
+    num_eval_envs: int = 200
     ucb_alpha: float = 2.0
     num_arms: int = 10
-    train_steps: int = 5000
-    context_len: int = 100
+    train_steps: int = 200
+    context_len: int = 200
     train_seed: int = 1
     eval_seed: int = 0
 
@@ -71,6 +71,7 @@ def main(config: UCBConfig):
     algo = UCB(config.ucb_alpha, config.num_arms)
     total_history, _ = generate_trajectories(train_envs, algo, config)
     save_trajectories(total_history)
+    print(total_history)
 
 if __name__ == '__main__':
     main()

@@ -29,10 +29,10 @@ class TrainConfig:
     eval_seed: int = 0
     num_arms: int = 10
     num_train_steps: int = 10000
-    seq_len: int = 100
+    seq_len: int = 200
     num_episodes = 20
     episode_steps = 100
-    eval_every: int = 100
+    eval_every: int = 1000
     layer_norm_bias: bool = True
     token_embed_dim: int = 128
     d_model: int = 512
@@ -46,7 +46,7 @@ class TrainConfig:
     beta1: float = 0.9
     weight_decay: float = 1e-5
     warmup_ratio: float = 0.1
-    clip_grad_norm: float = 5
+    clip_grad_norm: float = 1
     get_action_type: str = "sample"
     label_smoothing: float = 0.02
 
@@ -163,7 +163,7 @@ def train(config: TrainConfig, ucbconfig: UCBConfig):
     This is main train function
     """
     set_seed(seed=config.train_seed)
-    wandb.init(project='ad_rl', config=asdict(config))
+    wandb.init(project='ad_rl_3', config=asdict(config))
     dataset = SequenceData(data_path=config.histories_path, context_len=config.seq_len)
     dataloader = DataLoader(
         dataset=dataset,
@@ -179,7 +179,7 @@ def train(config: TrainConfig, ucbconfig: UCBConfig):
         n_query_head=config.num_heads,
         attn_pdrop=config.attention_dropout, 
         resid_pdrop=config.dropout, 
-        block_size=2 * config.seq_len + 2, 
+        block_size=3 * config.seq_len, 
         rope=True
     )
 
@@ -204,9 +204,14 @@ def train(config: TrainConfig, ucbconfig: UCBConfig):
     dataloader = next_dataloader(dataloader)
 
     for global_step in trange(1, config.num_train_steps + 1, desc="Training"):
-        _, actions, rewards = next(dataloader)
+        states, actions, rewards = next(dataloader)
+        states = states.to(torch.long).to(config.device)
         actions = actions.to(torch.long).to(config.device)
         rewards = rewards.to(torch.long).to(config.device)
+        assert states.shape[1] == config.seq_len, (
+                states.shape[1],
+                config.seq_len,
+            )
         assert actions.shape[1] == config.seq_len, (
                 actions.shape[1],
                 config.seq_len,
@@ -215,15 +220,14 @@ def train(config: TrainConfig, ucbconfig: UCBConfig):
             rewards.shape[1],
             config.seq_len,
         )
-        pred = model(actions, rewards)
-        pred = pred[:, :-1]
+        pred = model(states, actions, rewards)
         assert pred.shape[1] == config.seq_len, (pred.shape[1], config.seq_len)
         loss = torch.nn.functional.cross_entropy(
             input=pred.flatten(0, 1),
             target=actions.flatten(0, 1),
             label_smoothing=config.label_smoothing,
         )
-        optim.zero_grad(set_to_none=True)
+        optim.zero_grad()
         loss.backward()
         clip_grad_norm_(model.parameters(), config.clip_grad_norm)
         optim.step()
