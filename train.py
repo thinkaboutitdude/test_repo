@@ -258,6 +258,8 @@ def train(config: TrainConfig, ucbconfig: UCBConfig):
             )
             model.train()
 
+    wandb.finish()
+
     
     checkpoint_full_path = os.path.join(config.checkpoint_path, 'model_checkpoint.pt')
     os.makedirs(os.path.dirname(checkpoint_full_path), exist_ok=True)

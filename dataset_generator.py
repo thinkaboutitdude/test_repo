@@ -71,7 +71,6 @@ def main(config: UCBConfig):
     algo = UCB(config.ucb_alpha, config.num_arms)
     total_history, _ = generate_trajectories(train_envs, algo, config)
     save_trajectories(total_history)
-    print(total_history)
 
 if __name__ == '__main__':
     main()
